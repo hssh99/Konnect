@@ -53,19 +53,13 @@ userRouter.get("/user/connections", userAuth, async (req, res) => {
 
 userRouter.get("/feed", userAuth, async (req, res) => {
     try {
-
-        /* User should see all the user cards except
-            0. his own card
-            1. his connections
-            2. ignored people
-            3. already sent the connection request
-
-            Eg. Rahul(new user) = [Mark, Donald, MS Dhoni, Virat]
-            R -> Akshay -> rejected R -> Elon -> Accepted
-            Akshay feed -> all except Rahul
-            Elon feed -> all except Rahul
-        */
         const loggedInUser = req.user;
+
+        // skip = (page-1) * limit;
+        const page = parseInt(req.query.page) || 1;
+        let limit = parseInt(req.query.limit) || 10;
+        limit = limit > 50 ? 50 : limit;
+        const skip = (page - 1) * limit;
 
         // Find all connection request ( sent + received )
         const connectionRequests = await ConnectionRequest.find({
@@ -86,9 +80,9 @@ userRouter.get("/feed", userAuth, async (req, res) => {
                 { _id: { $ne: loggedInUser._id } },
             ]
 
-        }).select(USER_SAFE_DATA);
+        }).select(USER_SAFE_DATA).skip(skip).limit(limit);
 
-        res.send(users);
+        res.json({ data: users });
 
     } catch (err) {
         res.status(400).json({ message: err.message });
